@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>360° Photo Stitcher & Viewer</title>
+    <!-- Standard Local Resource Loading -->
+    
+    <link rel="stylesheet" href="{{ url_for('static', filename='pannellum.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <script src="{{ url_for('static', filename='pannellum.js') }}"></script>
+    
+</head>
+<body>
+
+    <h1>360° Panorama Stitcher & Viewer</h1>
+    <p>Upload 2 or more overlapping images to stitch them, then drag your mouse to look around!</p>
+
+    <!-- Interactive Drag & Drop Box Container -->
+    <div class="upload-section" id="drop-zone">
+        <span class="upload-icon">📁</span>
+        <p><strong>Drag & drop your overlapping images here</strong></p>
+        <p>or click to browse files from your computer</p>
+        
+        <form id="upload-form">
+            <input type="file" id="image-input" name="images" multiple accept="image/*" required>
+            <br>
+            <button type="submit" class="btn" id="submit-btn" style="margin-top: 15px;">Stitch & View 360°</button>
+            <button type="button" class="btn-secondary" id="clear-btn">Clear Gallery</button>
+        </form>
+
+        <!-- Client-Side Real-Time Gallery Previews -->
+        <div id="preview-gallery" class="preview-gallery"></div>
+        
+        <div id="loading-msg" class="loading">Stitching images together... please wait...</div>
+        <div id="error-msg" class="error"></div>
+    </div>
+
+    <!-- 360 Viewer Canvas Wrapper -->
+    <div id="viewer-container">
+        <h3>Interactive 360° View (Click and drag with your mouse)</h3>
+        <div id="panorama-viewer"></div>
+        <a id="download-link" href="#" download="stitched_panorama.jpg" class="download-btn">Download Stitched Image</a>
+    </div>
+
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>
