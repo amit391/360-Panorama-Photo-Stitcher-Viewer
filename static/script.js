@@ -234,7 +234,18 @@ const dropZone = document.getElementById('drop-zone');
                     method: 'POST',
                     body: formData
                 });
-                const result = await response.json();
+                
+                const responseText = await response.text();
+                let result;
+
+                try {
+                    result = JSON.parse(responseText);
+                } catch (jsonErr) {
+                    // If the server sent back an HTML crash stack trace, extract it or log it
+                    console.error("Server crashed and returned HTML instead of JSON:", responseText);
+                    throw new Error("Server processing error. Please check Render dashboard logs for detail.");
+                }
+                //const result = await response.json();
                 if (!response.ok || !result.success) {
                     throw new Error(result.error || 'An unexpected stitching error occurred.');
                 }
