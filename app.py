@@ -7,8 +7,12 @@ from werkzeug.utils import secure_filename
 
 app = Flask(__name__)
 
-UPLOAD_FOLDER = os.path.join('static', 'uploads')
-OUTPUT_FOLDER = os.path.join('static', 'output')
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+UPLOAD_FOLDER = os.path.join(BASE_DIR, 'static', 'uploads')
+OUTPUT_FOLDER = os.path.join(BASE_DIR, 'static', 'output')
+
+#UPLOAD_FOLDER = os.path.join('static', 'uploads')
+#OUTPUT_FOLDER = os.path.join('static', 'output')
 
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 os.makedirs(OUTPUT_FOLDER, exist_ok=True)
