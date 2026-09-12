@@ -8,4 +8,4 @@ pip install -r requirements.txt
 
 # Install system dependencies needed for OpenCV on Render's Ubuntu environment
 
-apt-get update && apt-get install -y libgl1-mesa-glx libglib2.0-0
+#apt-get update && apt-get install -y libgl1-mesa-glx libglib2.0-0
