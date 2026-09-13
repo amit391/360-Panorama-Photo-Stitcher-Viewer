@@ -207,64 +207,138 @@ const dropZone = document.getElementById('drop-zone');
 
         clearBtn.addEventListener('click', resetInterface);
 
-        // Form Submission and Server Fetch Orchestration
+        
+        // Asynchronous client-side compression tool using HTML5 Canvas
+        // Asynchronous client-side compression tool using HTML5 Canvas
+        function compressBrowserImage(file, maxWidth = 1000, quality = 0.75) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.readAsDataURL(file);
+                reader.onload = (event) => {
+                    const img = new Image();
+                    img.src = event.target.result;
+                    img.onload = () => {
+                        const canvas = document.createElement('canvas');
+                        let width = img.width;
+                        let height = img.height;
+
+                    // Calculate aspect scaling boundaries cleanly
+                        if (width > maxWidth) {
+                            height = Math.round((height * maxWidth) / width);
+                            width = maxWidth;
+                        }
+
+                        canvas.width = width;
+                        canvas.height = height;
+                        const ctx = canvas.getContext('2d');
+                        ctx.drawImage(img, 0, 0, width, height);
+
+                    // Convert canvas pixels to a optimized lightweight JPEG Blob
+                        canvas.toBlob((blob) => {
+                            if (blob) {
+            // Re-wrap the raw blob into a predictable file naming structure
+                                const compressedFile = new File([blob], file.name, { type: 'image/jpeg', lastModified: Date.now() });
+                                resolve(compressedFile);
+                            } else {
+                                reject(new Error(`Canvas payload generation failed for ${file.name}`));
+                            }
+                        }, 'image/jpeg', quality);
+                    };
+                    img.onerror = (err) => reject(err);
+                };
+                reader.onerror = (err) => reject(err);
+            });
+        }
+
+        // Form Submission and Server Fetch Orchestration with Parallel Compression & Validation
         uploadForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             errorMsg.textContent = '';
-            
+
             if (selectedFiles.length < 2) {
                 errorMsg.textContent = "Please select at least 2 images before submitting.";
                 return;
             }
 
+        // --- File Type and Size Validation Settings ---
+            const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
+            const MAX_FILE_SIZE_MB = 20; // Example limit: 20MB per file
+            const MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024;
+
+            // Enforce explicit structural sorting index matches before validation & payload packaging
+            selectedFiles.sort((a, b) => a.currentOrder - b.currentOrder);
+
+            // Validate all files up front before doing any heavy compression work
+            for (const item of selectedFiles) {
+                const file = item.file;
+    
+                if (!ALLOWED_TYPES.includes(file.type)) {
+                    errorMsg.textContent = `Invalid file type: "${file.name}". Only JPG, PNG, and WebP are allowed.`;
+                    return;
+                }
+
+                if (file.size > MAX_FILE_SIZE_BYTES) {
+                    errorMsg.textContent = `File "${file.name}" exceeds the ${MAX_FILE_SIZE_MB}MB size limit.`;
+                    return;
+                }
+            }
+
+            // Setup loading UX states
             loadingMsg.style.display = 'block';
+            loadingMsg.textContent = 'Compressing images in parallel... please wait...';
             viewerContainer.style.display = 'none';
             submitBtn.disabled = true;
 
-            // Enforce explicit structural sorting index matches before payload packaging
-            selectedFiles.sort((a, b) => a.currentOrder - b.currentOrder);
-
             const formData = new FormData();
-            selectedFiles.forEach(item => {
-                formData.append('images', item.file);
-            });
 
             try {
-                const response = await fetch('/stitch', {
-                    method: 'POST',
-                    body: formData
+                // Fire off all compression tasks concurrently using Promise.all
+                const compressionPromises = selectedFiles.map(item => 
+                    compressBrowserImage(item.file, 1000, 0.75)
+                );
+
+                const compressedBlobs = await Promise.all(compressionPromises);
+
+                // Append all successfully compressed files to the FormData payload
+                compressedBlobs.forEach((compressedBlob) => {
+                    formData.append('images', compressedBlob);
                 });
-                
+
+                loadingMsg.textContent = 'Uploading files and generating panorama on server...';
+    
+                const response = await fetch('/stitch', { method: 'POST', body: formData });
                 const responseText = await response.text();
                 let result;
 
                 try {
                     result = JSON.parse(responseText);
                 } catch (jsonErr) {
-                    // If the server sent back an HTML crash stack trace, extract it or log it
-                    console.error("Server crashed and returned HTML instead of JSON:", responseText);
-                    throw new Error("Server processing error. Please check Render dashboard logs for detail.");
+                    console.error("Server returned non-JSON string page output:", responseText);
+                    throw new Error("Server processing timeout or OOM failure occurred. Please inspect dashboard logs.");
                 }
-                //const result = await response.json();
+
                 if (!response.ok || !result.success) {
                     throw new Error(result.error || 'An unexpected stitching error occurred.');
                 }
+
                 downloadLink.href = result.image_url;
                 viewerContainer.style.display = 'block';
 
                 if (pViewer) {
                     pViewer.destroy();
                 }
-                pViewer = pannellum.viewer('panorama-viewer', {
-                    type: 'equirectangular',
-                    panorama: result.image_url,
-                    autoLoad: true,
-                    compass: false
+
+                pViewer = pannellum.viewer('panorama-viewer', { 
+                    type: 'equirectangular', 
+                    panorama: result.image_url, 
+                    autoLoad: true, 
+                    compass: false 
                 });
-                } catch (err) {
-                    errorMsg.textContent = err.message;
-                    } finally {
-                        loadingMsg.style.display = 'none';
-                        submitBtn.disabled = false;
-                    }
-                });
+
+            } catch (err) {
+                errorMsg.textContent = err.message;
+            } finally {
+                loadingMsg.style.display = 'none';
+                submitBtn.disabled = false;
+            }
+        });
